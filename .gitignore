@@ -1,0 +1,7 @@
+# generirano / lokalno
+__pycache__/
+*.pyc
+cults_payload.graphql
+
+# lokalni generator, ne treba na javnom repou
+Maze puzzle generator za 3D print*.html
