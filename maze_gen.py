@@ -220,14 +220,18 @@ def build(P):
     RS, RO, LD, LT, ZP = P['RS'], P['RO'], P['LD'], P['LT'], P['ZP']
     sleeve = cq.Workplane('XY').circle(RO).extrude(LT).cut(cq.Workplane('XY').circle(RS).extrude(LD))
     PCX = RS + 0.3 - EXT
+    if abs(PCX - RS) < 0.02:   # ravna ploha kupole tocno na provrtu (EXT = 0.3) -> OCCT napravi 2 tijela
+        PCX = RS - 0.02
     half = cq.Workplane('XY').box(2 * PR, 2 * PR, 2 * PR, centered=(False, True, True)).translate((-2 * PR, 0, 0))
     dome = cq.Workplane('XY').sphere(PR).intersect(half).translate((PCX, 0, ZP))
-    sleeve = sleeve.union(dome)
-    if EXT > 0.05:
-        shaft = cq.Solid.makeCylinder(PR, EXT, cq.Vector(PCX, 0, ZP), cq.Vector(1, 0, 0))
-        sleeve = sleeve.union(cq.Workplane('XY').newObject([shaft]))
-    if not sleeve.val().isValid():
-        raise RuntimeError('rukavac nije valjano tijelo (isValid=False)')
+    # vrat pina uvijek ulazi do pola stijenke: bez njega se kod PCX ~ RS (EXT ~ 0.3)
+    # ravna ploha kupole poklopi sa stijenkom i pin ispadne kao zasebno tijelo
+    neck = cq.Solid.makeCylinder(PR, RS + P['WL'] / 2.0 - PCX, cq.Vector(PCX, 0, ZP), cq.Vector(1, 0, 0))
+    pin = dome.union(cq.Workplane('XY').newObject([neck]))
+    sleeve = sleeve.union(pin)
+    for name, w in (('jezgra', core), ('rukavac', sleeve)):
+        if not w.val().isValid() or len(w.val().Solids()) != 1:
+            raise RuntimeError('%s: nevaljano ili vise tijela (%d)' % (name, len(w.val().Solids())))
 
     if P['PRINT_ORIENT']:   # otvorena strana gore
         core = core.rotate((0, 0, 0), (1, 0, 0), 180).translate((0, 0, H))

@@ -64,7 +64,7 @@ def actor(poly, color, pos=(0, 0, 0), opacity=1.0):
     return a
 
 
-def render(actors, fname, view_dir=(0, -1, 0), elev=15, azim=0, zoom=1.0):
+def render(actors, fname, view_dir=(0, -1, 0), elev=15, azim=0, zoom=1.0, label=None):
     ren = vtk.vtkRenderer()
     ren.SetBackground(1, 1, 1)
     ren.SetBackground2(0.82, 0.86, 0.92)
@@ -102,7 +102,26 @@ def render(actors, fname, view_dir=(0, -1, 0), elev=15, azim=0, zoom=1.0):
     wr.SetFileName(os.path.join(OUT, fname))
     wr.SetInputConnection(w2i.GetOutputPort())
     wr.Write()
+    if label:
+        add_label(os.path.join(OUT, fname), label)
     print('  ' + os.path.join(OUT, fname))
+
+
+def add_label(path, text):
+    # dimenzije u kutu: kamera uvijek popuni kadar, pa se velicina inace ne vidi
+    # (PIL umjesto vtkTextActor: VTK-ov tekst na Windowsu zna prekinuti ispis na konzolu)
+    from PIL import Image, ImageDraw, ImageFont
+    im = Image.open(path).convert('RGB')
+    try:
+        font = ImageFont.truetype('arialbd.ttf', 44)
+    except OSError:
+        font = ImageFont.load_default()
+    d = ImageDraw.Draw(im)
+    x0, y0, x1, y1 = d.textbbox((0, 0), text, font=font)
+    x, y = 40, SIZE[1] - 40 - (y1 - y0)
+    d.rounded_rectangle((x - 18, y - 14, x + x1 + 18, y + y1 + 14), 14, fill=(255, 255, 255))
+    d.text((x, y - y0 + 0), text, font=font, fill=(38, 43, 56))
+    im.save(path)
 
 
 def goal_angle():
@@ -141,8 +160,10 @@ def render_all(d='.', core_col=CORE_COL, sleeve_col=SLEEVE_COL):
 
     print('Renderam:')
     # naslovna: oba dijela jedan do drugog
+    label = 'Ø %.0f x %.0f mm   |   groove %.1f mm   |   %d x %d maze' % (
+        2 * P['RO'], P['LT'], 2 * P['HW'], P.get('cols', P['W'] // 2), P.get('rows', P['HH'] // 2))
     render([actor(core, core_col, (-gap / 2, 0, 0)),
-            actor(sleeve, sleeve_col, (gap / 2, 0, 0))], 'parts.png', elev=12, zoom=1.1)
+            actor(sleeve, sleeve_col, (gap / 2, 0, 0))], 'parts.png', elev=12, zoom=1.1, label=label)
     render([actor(core, core_col)], 'core.png', elev=12, azim=-30, zoom=1.0)
     # rukavac prerezan kroz os, gledamo u straznju stijenku na kojoj je pin (+X)
     render([actor(half(sleeve, (1, 0, 0)), sleeve_col)], 'sleeve.png',

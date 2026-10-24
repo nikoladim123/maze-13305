@@ -118,11 +118,13 @@ def ensure_plan(s):
 # ---------------- dizajn ----------------
 def rand_inputs(r):
     # sve nasumicno osim tolerancija (TL, CL)
-    D = r.choice(range(32, 58, 2))
-    H = max(40, min(90, round(D * r.uniform(1.1, 1.8))))
-    inp = dict(D=D, H=H, pw=round(r.uniform(3.8, 5.5), 1), dp=round(r.uniform(2.0, 3.0), 1), cl=CL, tl=TL,
-               pl=round(r.choice([0, 0, r.uniform(0.2, 0.8)]), 1), wl=round(r.uniform(2.2, 3.0), 1),
-               cv=0, ct=round(r.uniform(2.5, 4.0), 1), seed=r.randrange(1, 10 ** 6))
+    D = r.choice(range(26, 82, 2))
+    H = max(35, min(130, round(D * r.uniform(0.9, 2.2))))
+    # sirina staze: od sitnog do krupnog labirinta, ali barem 8 stupaca po opsegu
+    pw = round(min(r.uniform(3.2, 7.0), 3.14159 * D / 16), 1)
+    inp = dict(D=D, H=H, pw=pw, dp=round(r.uniform(1.8, 4.0), 1), cl=CL, tl=TL,
+               pl=round(r.choice([0, 0, r.uniform(0.2, 1.0)]), 1), wl=round(r.uniform(1.8, 4.0), 1),
+               cv=0, ct=round(r.uniform(2.0, 5.0), 1), seed=r.randrange(1, 10 ** 6))
     if r.random() < 0.75:   # skrivena supljina, stijenka >= MIN_CAVITY_WALL
         P = maze_gen.design(**inp)
         cv_max = 2 * (P['R'] - P['DP'] - MIN_CAVITY_WALL)
