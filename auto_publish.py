@@ -117,13 +117,17 @@ def ensure_plan(s):
 
 # ---------------- dizajn ----------------
 def rand_inputs(r):
+    # sve nasumicno osim tolerancija (TL, CL)
     D = r.choice(range(32, 58, 2))
     H = max(40, min(90, round(D * r.uniform(1.1, 1.8))))
-    inp = dict(D=D, H=H, pw=round(r.uniform(3.8, 5.5), 1), dp=2, cl=CL, tl=TL, pl=0,
-               wl=round(r.uniform(2.2, 3.0), 1), cv=0, ct=3, seed=r.randrange(1, 10 ** 6))
+    inp = dict(D=D, H=H, pw=round(r.uniform(3.8, 5.5), 1), dp=round(r.uniform(2.0, 3.0), 1), cl=CL, tl=TL,
+               pl=round(r.choice([0, 0, r.uniform(0.2, 0.8)]), 1), wl=round(r.uniform(2.2, 3.0), 1),
+               cv=0, ct=round(r.uniform(2.5, 4.0), 1), seed=r.randrange(1, 10 ** 6))
     if r.random() < 0.75:   # skrivena supljina, stijenka >= MIN_CAVITY_WALL
         P = maze_gen.design(**inp)
-        inp['cv'] = round(2 * (P['R'] - P['DP'] - MIN_CAVITY_WALL), 1)
+        cv_max = 2 * (P['R'] - P['DP'] - MIN_CAVITY_WALL)
+        if cv_max >= 8:
+            inp['cv'] = round(r.uniform(max(8, 0.6 * cv_max), cv_max), 1)
     return inp
 
 
