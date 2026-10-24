@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-# Preview slike iz STL-ova (VTK, offscreen). Pokretanje: python render_previews.py
-# Izlaz u previews/: parts.png (naslovna), core.png, sleeve.png (presjek s pinom), assembled.png
+# Preview slike iz STL-ova (VTK, offscreen). Pokretanje: python render_previews.py [mapa]
+# Izlaz u <mapa>/previews/: parts.png (naslovna), core.png, sleeve.png (presjek s pinom), assembled.png
 import json
-import math
 import os
+import sys
 import vtk
 
-OUT = 'previews'
 SIZE = (1600, 1200)   # 4:3
 CORE_COL = (0.95, 0.55, 0.15)
 SLEEVE_COL = (0.25, 0.45, 0.85)
-
-P = json.load(open('maze_params.json', encoding='utf-8'))
+P = None
+OUT = None
 
 
 def load(path):
@@ -131,20 +130,28 @@ def assembled(core_work):
     return f.GetOutput()
 
 
-os.makedirs(OUT, exist_ok=True)
-core = to_work(load('maze_core.stl'), P['H'])
-sleeve = to_work(load('maze_sleeve.stl'), P['LT'])
-gap = 2 * P['RO'] + 12
+def render_all(d='.', core_col=CORE_COL, sleeve_col=SLEEVE_COL):
+    global P, OUT
+    P = json.load(open(os.path.join(d, 'maze_params.json'), encoding='utf-8'))
+    OUT = os.path.join(d, 'previews')
+    os.makedirs(OUT, exist_ok=True)
+    core = to_work(load(os.path.join(d, 'maze_core.stl')), P['H'])
+    sleeve = to_work(load(os.path.join(d, 'maze_sleeve.stl')), P['LT'])
+    gap = 2 * P['RO'] + 12
 
-print('Renderam:')
-# naslovna: oba dijela jedan do drugog
-render([actor(core, CORE_COL, (-gap / 2, 0, 0)),
-        actor(sleeve, SLEEVE_COL, (gap / 2, 0, 0))], 'parts.png', elev=12, zoom=1.1)
-render([actor(core, CORE_COL)], 'core.png', elev=12, azim=-30, zoom=1.0)
-# rukavac prerezan kroz os, gledamo u straznju stijenku na kojoj je pin (+X)
-render([actor(half(sleeve, (1, 0, 0)), SLEEVE_COL)], 'sleeve.png',
-       view_dir=(1, 0, 0), elev=10, azim=-25, zoom=1.0)
-# sastavljeno (zatvoreno): rukavac poluproziran, gledamo prema pinu
-render([actor(assembled(core), CORE_COL),
-        actor(sleeve, SLEEVE_COL, opacity=0.3)], 'assembled.png',
-       view_dir=(-1, 0, 0), elev=12, azim=-20, zoom=1.0)
+    print('Renderam:')
+    # naslovna: oba dijela jedan do drugog
+    render([actor(core, core_col, (-gap / 2, 0, 0)),
+            actor(sleeve, sleeve_col, (gap / 2, 0, 0))], 'parts.png', elev=12, zoom=1.1)
+    render([actor(core, core_col)], 'core.png', elev=12, azim=-30, zoom=1.0)
+    # rukavac prerezan kroz os, gledamo u straznju stijenku na kojoj je pin (+X)
+    render([actor(half(sleeve, (1, 0, 0)), sleeve_col)], 'sleeve.png',
+           view_dir=(1, 0, 0), elev=10, azim=-25, zoom=1.0)
+    # sastavljeno (zatvoreno): rukavac poluproziran, gledamo prema pinu
+    render([actor(assembled(core), core_col),
+            actor(sleeve, sleeve_col, opacity=0.3)], 'assembled.png',
+           view_dir=(-1, 0, 0), elev=12, azim=-20, zoom=1.0)
+
+
+if __name__ == '__main__':
+    render_all(sys.argv[1] if len(sys.argv) > 1 else '.')

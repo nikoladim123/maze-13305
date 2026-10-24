@@ -37,16 +37,23 @@ ENDPOINT = os.environ.get('CULTS_ENDPOINT', 'https://cults3d.com/graphql')   # o
 FILES = ['maze_core.stl', 'maze_sleeve.stl', 'maze_core.step', 'maze_sleeve.step']
 IMAGES = ['previews/parts.png', 'previews/assembled.png', 'previews/core.png', 'previews/sleeve.png']
 MAX_URLS = 10   # Cults: najvise 10 linkova po fileUrls / imageUrls
-
-P = json.load(open('maze_params.json', encoding='utf-8'))
+LICENSE = 'cults_pu'   # Private Use: dopustena i za besplatne i za placene dizajne
 
 
 # ---------------- sadrzaj ----------------
-def title():
-    return 'Cylindrical Maze Puzzle Gift Box (%dx%d maze, seed %d)' % (P['W'], P['HH'], P['seed'])
+def difficulty(P):
+    n = P.get('solution_len', 0)
+    return 'Easy' if n < 35 else 'Medium' if n < 55 else 'Hard'
 
 
-def description():
+def title(P, n=None):
+    if n is None:
+        return 'Cylindrical Maze Puzzle Gift Box (%dx%d maze, seed %d)' % (P['W'], P['HH'], P['seed'])
+    kind = 'Maze Puzzle Gift Box' if P['RC'] > 0 else 'Cylinder Maze Puzzle'
+    return '%s #%d - %s, %.0f mm' % (kind, n, difficulty(P), 2 * P['RO'])
+
+
+def description(P):
     d_core = 2 * P['R']
     d_out = 2 * P['RO']
     lines = [
@@ -65,8 +72,14 @@ def description():
     if P['RC'] > 0:
         lines.append('- Hidden compartment: %.0f mm diameter x %.0f mm deep' % (2 * P['RC'], P['ZF']))
     lines += [
-        '- Maze: %d x %d grid, round grooves %.1f mm wide' % (P['W'], P['HH'], 2 * P['HW']),
+        '- Maze: %d x %d cells, round grooves %.1f mm wide'
+        % (P.get('cols', P['W'] // 2), P.get('rows', P['HH'] // 2), 2 * P['HW']),
+    ]
+    if 'solution_len' in P:
+        lines.append('- Difficulty: %s (solution path %d cells)' % (difficulty(P), P['solution_len']))
+    lines += [
         '- Clearance core/sleeve: %.1f mm' % P['CL'],
+        '- Pin/groove tolerance: %.1f mm' % (P['TL'] if 'TL' in P else P['HW'] - P['PR']),
         '',
         'Printing:',
         '- Both parts are already oriented for printing (closed end on the bed, open end up).',
@@ -164,13 +177,13 @@ def base_url(args):
     return None
 
 
-def check_urls(base, paths):
+def check_urls(base, paths, root='.'):
     ok = True
     urls = []
     for p in paths:
         url = base + '/' + p.replace('\\', '/')
         urls.append(url)
-        size = os.path.getsize(p)
+        size = os.path.getsize(os.path.join(root, p))
         try:
             # identity: inace npr. GitHub salje tekst (STEP) gzipan pa je Content-Length manji
             r = requests.head(url, allow_redirects=True, timeout=30,
@@ -211,8 +224,9 @@ def main():
     if len(FILES) > MAX_URLS or len(IMAGES) > MAX_URLS:
         sys.exit('Cults prima najvise %d datoteka/slika po objavi.' % MAX_URLS)
 
-    name = args.title or title()
-    desc = description()
+    P = json.load(open('maze_params.json', encoding='utf-8'))
+    name = args.title or title(P)
+    desc = description(P)
     print('=== Sadrzaj ===')
     print('Naslov: ' + name)
     print('Tagovi: ' + ', '.join(TAGS))
@@ -228,11 +242,12 @@ def main():
     else:
         api = Cults(user, key)
         print('=== API provjera ===')
-        me = api.q('{ myself { nick } }')
+        me = api.q('{ myself { user { nick creationsCount } } }')
         if me.get('errors'):
             print('  myself: %s' % me['errors'][0].get('message'))
         else:
-            print('  Prijavljen kao: %s' % me['data']['myself']['nick'])
+            u = me['data']['myself']['user']
+            print('  Prijavljen kao: %s (%s objava)' % (u['nick'], u['creationsCount']))
         cats = api.q('{ categories { id name(locale: EN) children { id name(locale: EN) } } }')
         if cats.get('errors'):
             sys.exit('GRESKA categories: %s' % cats['errors'])

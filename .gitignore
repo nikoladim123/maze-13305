@@ -5,3 +5,17 @@ cults_payload.graphql
 
 # lokalni generator, ne treba na javnom repou
 Maze puzzle generator za 3D print*.html
+
+# automatska objava (lokalno stanje, privremeni repo, generirani dizajni)
+.upload/
+designs/
+logs/
+auto_state.json
+auto_state.json.tmp
+auto_publish.lock
+
+# modeli i slike se ne drze na GitHubu (privremeno idu samo na grane za Cults)
+*.stl
+*.step
+maze_params.json
+previews/
