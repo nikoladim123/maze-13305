@@ -266,15 +266,10 @@ def my_creations(a):
 
 
 def set_price(a, cid, eur):
-    base = 'updateCreation(id: %s, downloadPrice: %s, currency: EUR)' % (cu.gql_str(cid), repr(eur))
-    try:
-        out = q(a, 'mutation { %s { errors } }' % base)['updateCreation']
-        if out and out.get('errors'):
-            raise RuntimeError('updateCreation: %s' % out['errors'])
-    except RuntimeError as e:
-        if 'errors' not in str(e) and 'selection' not in str(e).lower():
-            raise
-        q(a, 'mutation { %s }' % base)   # starija shema: updateCreation bez povratnih polja
+    out = q(a, 'mutation { updateCreation(id: %s, downloadPrice: %s, currency: EUR) { errors } }'
+            % (cu.gql_str(cid), repr(eur)))['updateCreation']
+    if out.get('errors'):
+        raise RuntimeError('updateCreation: %s' % out['errors'])
 
 
 # ---------------- koraci ----------------
@@ -299,7 +294,17 @@ def publish_one(s):
             time.sleep(15)
         else:
             raise RuntimeError('URL-ovi na GitHubu nisu dostupni')
-        c = create_creation(a, entry['title'], cu.description(P), image_urls, file_urls)
+        # Cults povlaci s drugog CDN ruba: odmah nakon pusha zna javiti "Could not download URL"
+        time.sleep(90)
+        for i in range(3):
+            try:
+                c = create_creation(a, entry['title'], cu.description(P), image_urls, file_urls)
+                break
+            except RuntimeError as e:
+                if 'Could not download' not in str(e) or i == 2:
+                    raise
+                log.info('Cults jos ne vidi datoteke, ponavljam za 2 min ...')
+                time.sleep(120)
     except Exception:
         entry['status'] = 'failed'
         try:
@@ -324,7 +329,7 @@ def check(s):
         c = cs.get(e['id'])
         if e['status'] == 'ingesting':
             age = (now() - dt.datetime.fromisoformat(e['created'])).total_seconds() / 60
-            if c and len(c.get('blueprints') or []) >= len(cu.FILES) and c.get('illustrationImageUrl') and age > 20:
+            if c and len(c.get('blueprints') or []) >= len(cu.FILES) and c.get('illustrationImageUrl') and age > 5:
                 delete_branch(e['branch'])
                 e['status'] = 'live'
                 for f in os.listdir(e['dir']):   # teske datoteke se mogu regenerirati iz inputs
