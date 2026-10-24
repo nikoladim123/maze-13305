@@ -26,6 +26,13 @@ import time
 
 import requests
 
+try:
+    # koristi Windows spremiste certifikata (npr. kad antivirus presrece HTTPS svojim certifikatom)
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
+
 ENDPOINT = os.environ.get('CULTS_ENDPOINT', 'https://cults3d.com/graphql')   # override samo za testiranje
 FILES = ['maze_core.stl', 'maze_sleeve.stl', 'maze_core.step', 'maze_sleeve.step']
 IMAGES = ['previews/parts.png', 'previews/assembled.png', 'previews/core.png', 'previews/sleeve.png']
@@ -165,7 +172,9 @@ def check_urls(base, paths):
         urls.append(url)
         size = os.path.getsize(p)
         try:
-            r = requests.head(url, allow_redirects=True, timeout=30)
+            # identity: inace npr. GitHub salje tekst (STEP) gzipan pa je Content-Length manji
+            r = requests.head(url, allow_redirects=True, timeout=30,
+                              headers={'Accept-Encoding': 'identity'})
             remote = int(r.headers.get('Content-Length', -1))
             if r.status_code != 200:
                 print('  [X] %s -> HTTP %d' % (url, r.status_code))
