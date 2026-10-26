@@ -28,7 +28,7 @@ temporary branch, and the branch is deleted once Cults has downloaded them.
   (only designs published by this script, tracked in `auto_state.json`);
 - pauses after 3 failed uploads in a row (`python auto_publish.py resume`).
 
-Other commands: `publish` (one now), `check`, `status`. Log: `logs/auto_publish.log`.
+Other commands: `publish` (one now), `check`, `status`, `pause` / `resume`. Log: `logs/auto_publish.log`.
 Requires `CULTS_USER` and `CULTS_API_KEY` environment variables.
 
 ```

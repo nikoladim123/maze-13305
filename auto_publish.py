@@ -5,7 +5,8 @@
   python auto_publish.py publish   # odmah generiraj i objavi jedan dizajn
   python auto_publish.py check     # samo ciscenje GitHuba + provjera downloada/cijena
   python auto_publish.py status    # stanje (plan, dizajni, pauza)
-  python auto_publish.py resume    # skini pauzu nakon uzastopnih gresaka
+  python auto_publish.py pause     # zaustavi nove objave (ciscenje i cijene rade dalje)
+  python auto_publish.py resume    # skini pauzu (rucnu ili nakon uzastopnih gresaka)
 
 Tijek jednog dizajna: nasumicni parametri (tl = 0.2 mm) -> CadQuery + provjera -> slike
 -> privremena grana na GitHubu -> createCreation (besplatno, cults_pu) -> kad Cults povuce
@@ -415,6 +416,9 @@ def main():
                 publish_one(s)
             elif cmd == 'check':
                 check(s)
+            elif cmd == 'pause':   # nove objave stoje; ciscenje GitHuba i cijene i dalje rade
+                s['paused'] = True
+                log.info('Pauza ukljucena (rucno).')
             elif cmd == 'resume':
                 s['paused'], s['fails'] = False, 0
                 log.info('Pauza skinuta.')
